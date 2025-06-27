@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EcoFlame - Futuristic Hydrogen Solutions</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Custom font for a clean, modern look */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Styles for the active tab button */
+        .tab-button.active {
+            @apply bg-emerald-600 text-white shadow-lg transform -translate-y-1; /* Added transform and stronger shadow */
+        }
+        /* Styles for the inactive tab button */
+        .tab-button {
+            @apply px-6 py-3 rounded-t-lg font-semibold text-lg transition-all duration-300;
+            @apply bg-gray-700 bg-opacity-50 text-gray-300 hover:bg-gray-600 hover:bg-opacity-70 hover:scale-105; /* Added hover scale */
+        }
+        /* Styles for tab content panels */
+        .tab-content {
+            @apply p-6 md:p-8 rounded-b-xl;
+        }
+        /* Chatbot button styling */
+        #chatbot-button {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000; /* Ensure it's above other content */
+        }
+        /* Chatbot window styling */
+        #chatbot-window {
+            position: fixed;
+            bottom: 7rem; /* Adjust based on button size */
+            right: 2rem;
+            z-index: 999;
+            width: 90%; /* Responsive width */
+            max-width: 350px; /* Max width for desktop */
+            height: 400px;
+            /* Glassmorphism effect */
+            background-color: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(20px); /* Initial state for animation */
+            opacity: 0;
+            transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        #chatbot-window.open {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* Modal Styles (for both Team and Contact) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8); /* Dark overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1001; /* Above chatbot */
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease-out, visibility 0.3s ease-out;
+        }
+        .modal-overlay.open {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background-color: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5);
+            border-radius: 20px;
+            padding: 2rem;
+            width: 90%;
+            max-width: 900px; /* Max width for content */
+            height: 90%; /* Max height for content */
+            overflow-y: auto; /* Enable scrolling if content overflows */
+            transform: scale(0.9);
+            transition: transform 0.3s ease-out;
+            position: relative; /* For close button positioning */
+        }
+        .modal-overlay.open .modal-content {
+            transform: scale(1);
+        }
+
+        /* Custom Keyframes for Animations */
+        @keyframes slideInFromTop {
+            0% {
+                opacity: 0;
+                transform: translateY(-100px);
+            }
+            60% { /* Slight overshoot for bounce effect */
+                opacity: 1;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideInFromBottom {
+            0% {
+                opacity: 0;
+                transform: translateY(100px);
+            }
+            60% { /* Slight overshoot for bounce effect */
+                opacity: 1;
+                transform: translateY(-10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeInScale {
+            0% {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes wave {
+            0% { transform: rotate(0deg); }
+            15% { transform: rotate(14deg); }
+            30% { transform: rotate(-8deg); }
+            45% { transform: rotate(14deg); }
+            60% { transform: rotate(-4deg); }
+            75% { transform: rotate(10deg); }
+            100% { transform: rotate(0deg); }
+        }
+
+        /* Apply animations using custom classes */
+        .animate-slide-from-top {
+            animation: slideInFromTop 1s ease-out forwards;
+        }
+
+        .animate-slide-from-bottom {
+            animation: slideInFromBottom 1s ease-out forwards;
+        }
+
+        .animate-fade-in-scale {
+            animation: fadeInScale 0.8s ease-out forwards;
+        }
+
+        .animate-wave {
+            animation: wave 2s infinite ease-in-out 3s; /* Start waving after initial text animations */
+            transform-origin: 70% 70%; /* Adjust origin for realistic wave */
+        }
+
+        /* Chatbot message styling - Neon Colors and Island Effect */
+        .user-message {
+            @apply bg-fuchsia-600 text-white p-3 rounded-xl self-end max-w-[80%] mb-2 shadow-md; /* Neon fuchsia for user */
+        }
+        .bot-message {
+            @apply bg-emerald-600 text-white p-3 rounded-xl self-start max-w-[80%] mb-2 shadow-md; /* Neon emerald for bot */
+        }
+        .loading-indicator {
+            @apply text-gray-400 text-sm italic mb-2 flex items-center;
+        }
+
+        /* Typing dots animation */
+        @keyframes blink {
+            0%, 100% { opacity: .2; }
+            33% { opacity: 1; }
+            66% { opacity: .2; }
+        }
+
+        .typing-dot {
+            animation: blink 1.4s infinite;
+            animation-fill-mode: both;
+        }
+
+        .typing-dot:nth-child(2) {
+            animation-delay: .2s;
+        }
+
+        .typing-dot:nth-child(3) {
+            animation-delay: .4s;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-blue-950 text-gray-100 min-h-screen flex flex-col">
+
+    <header class="bg-gray-900 bg-opacity-70 shadow-lg py-4 px-6 md:px-10 rounded-b-xl z-10 relative">
+        <nav class="container mx-auto flex justify-between items-center">
+            <a href="#" class="block hover:opacity-80 transition-opacity duration-300">
+                <img src="assets/eco_flame_logo.png" alt="EcoFlame Company Logo" class="h-20 md:h-24 w-auto rounded-full">
+            </a>
+            <div class="space-x-6 flex items-center">
+                <a href="#" class="text-white hover:text-emerald-300 transition-colors duration-300 text-lg">Home</a>
+                
+                <div class="relative group">
+                    <a href="#" class="text-white hover:text-emerald-300 transition-colors duration-300 text-lg py-2 px-3 rounded-md">
+                        Products <i class="fas fa-chevron-down text-xs ml-1 transition-transform duration-300 group-hover:rotate-180"></i>
+                    </a>
+                    <div class="absolute hidden group-hover:block bg-gray-800 bg-opacity-90 rounded-md shadow-lg py-2 w-48 top-full left-1/2 -translate-x-1/2 mt-2 z-20 border border-gray-700">
+                        <a href="reactors.html" target="_blank" class="block px-4 py-2 text-white hover:bg-emerald-600 hover:text-white transition-colors duration-200 text-base rounded-md mx-2">Hydrogen Reactors</a>
+                        <a href="stoves.html" target="_blank" class="block px-4 py-2 text-white hover:bg-emerald-600 hover:text-white transition-colors duration-200 text-base rounded-md mx-2">Hydrogen Stoves</a>
+                        <a href="reactor_packs.html" target="_blank" class="block px-4 py-2 text-white hover:bg-emerald-600 hover:text-white transition-colors duration-200 text-base rounded-md mx-2">Reactor Packs</a>
+                    </div>
+                </div>
+
+                <a href="tech_page.html" target="_blank" class="text-white hover:text-emerald-300 transition-colors duration-300 text-lg">Technology</a>
+                
+                <a href="#" id="open-team-modal" class="text-white hover:text-emerald-300 transition-colors duration-300 text-lg">Team</a>
+
+                <a href="#" id="open-contact-modal" class="text-white hover:text-emerald-300 transition-colors duration-300 text-lg">Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow container mx-auto p-6 md:p-10 flex flex-col items-center justify-center">
+        <div class="bg-white bg-opacity-10 backdrop-filter backdrop-blur-lg rounded-xl shadow-2xl p-6 md:p-8 w-full max-w-4xl border border-white border-opacity-20">
+            <div role="tablist" class="flex justify-center space-x-2 mb-6 border-b border-gray-700 overflow-x-auto pb-2">
+                <button role="tab" aria-selected="true" aria-controls="home-tab-panel" id="home-tab" class="tab-button active whitespace-nowrap">
+                    Overview
+                </button>
+            </div>
+
+            <div id="home-tab-panel" role="tabpanel" aria-labelledby="home-tab" class="tab-content relative">
+                <div class="absolute bottom-4 left-4 flex items-center space-x-2 opacity-0" id="welcome-animation-container">
+                    <img src="assets/robot-children-metal-svgrepo-com (1).svg" alt="Friendly Robot" class="w-10 h-10 animate-wave" id="robot-image">
+                </div>
+
+                <h2 class="text-3xl md:text-4xl font-bold text-emerald-300 mb-4 text-center opacity-0" id="main-heading">
+                    Welcome to EcoFlame: The Future of Clean Energy
+                </h2>
+                <p class="text-lg md:text-xl text-gray-200 mb-6 text-center opacity-0" id="main-paragraph">
+                    At EcoFlame, we are pioneering sustainable energy solutions with our innovative portable hydrogen reactors and hydrogen stoves. Experience the power of clean, efficient, and reliable energy for your home and on the go.
+                </p>
+                <div class="flex justify-center opacity-0" id="discover-button-container">
+                    <a href="reactors.html" target="_blank" class="inline-block bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transform hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-blue-950">
+                        Discover Our Products
+                    </a>
+                </div>
+            </div>
+
+            </div>
+    </main>
+
+    <footer class="bg-gray-900 bg-opacity-70 shadow-lg py-6 px-6 md:px-10 mt-auto rounded-t-xl">
+        <div class="container mx-auto text-center text-gray-400 text-sm">
+            &copy; 2025 EcoFlame. All rights reserved.
+            <div class="mt-2">
+                <a href="#" class="hover:text-emerald-300 transition-colors duration-300 mx-2">Privacy Policy</a> |
+                <a href="#" class="hover:text-emerald-300 transition-colors duration-300 mx-2">Terms of Service</a>
+            </div>
+        </div>
+    </footer>
+
+    <button id="chatbot-button" class="bg-emerald-600 hover:bg-emerald-700 text-white w-16 h-16 rounded-full flex items-center justify-center text-2xl shadow-xl transform hover:scale-110 transition-all duration-300 focus:outline-none focus:ring-4 focus:ring-emerald-500 focus:ring-opacity-75">
+        <i class="fas fa-comment-dots"></i>
+    </button>
+
+    <div id="chatbot-window" class="hidden">
+        <div class="bg-gray-800 bg-opacity-70 text-white p-3 rounded-t-xl flex justify-between items-center">
+            <h3 class="font-bold text-lg">EcoFlame Assistant</h3>
+            <button id="close-chatbot" class="text-gray-300 hover:text-white text-xl focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex-grow p-4 text-gray-200 overflow-y-auto flex flex-col" id="chat-messages">
+            <div class="bot-message">Hello! How can I help you with EcoFlame products today?</div>
+        </div>
+        <div class="p-3 bg-gray-800 bg-opacity-70 rounded-b-xl flex items-center">
+            <input type="text" placeholder="Type your message..." class="flex-grow p-2 rounded-lg bg-gray-700 bg-opacity-50 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-emerald-500" id="chat-input">
+            <button class="ml-2 bg-emerald-600 hover:bg-emerald-700 text-white p-2 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500" id="send-chat-button">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="team-modal-overlay" class="modal-overlay hidden">
+        <div id="team-modal-content" class="modal-content">
+            <button id="close-team-modal" class="absolute top-4 right-4 text-gray-300 hover:text-white text-3xl focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-3xl md:text-4xl font-bold text-purple-300 mb-6 text-center">
+                Meet the EcoFlame Innovators
+            </h2>
+            <p class="text-lg text-gray-200 mb-8 text-center">
+                Our dedicated team of engineering students, innovators, and inventors, each bringing a diverse range of technical skills and interdisciplinary knowledge to the table, is committed to bringing clean energy solutions to the world.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <img src="assets/Sano.jpg" alt="Lusano Luvanda" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-emerald-500 shadow-md">
+                    <h3 class="text-xl font-semibold text-white mb-1">Lusano Luvanda</h3>
+                    <p class="text-emerald-300 text-sm mb-2">CEO & Lead Engineer</p>
+                    <p class="text-gray-300 text-xs">Visionary leader driving EcoFlame's mission for a sustainable future.</p>
+                </div>
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <img src="assets/radhia.jpg" alt="Radhia Mgaza" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-emerald-500 shadow-md">
+                    <h3 class="text-xl font-semibold text-white mb-1">Radhia Mgaza</h3>
+                    <p class="text-emerald-300 text-sm mb-2">Marketing & Customer Engagement</p>
+                    <p class="text-gray-300 text-xs">Expert in sales management Market and Customer relations </p>
+                </div>
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <img src="assets/b boy.jpg" alt="Baraka Nyeho" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-emerald-500 shadow-md">
+                    <h3 class="text-xl font-semibold text-white mb-1">Baraka Nyeho</h3>
+                    <p class="text-emerald-300 text-sm mb-2">Product Designer</p>
+                    <p class="text-gray-300 text-xs">Crafting intuitive and elegant designs for all EcoFlame products.</p>
+                </div>
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <img src="ECOLABS SITE\new\John.png" alt="David Lee" class="w-32 h-32 rounded-full mx-auto mb-4 object-cover border-4 border-emerald-500 shadow-md">
+                    <h3 class="text-xl font-semibold text-white mb-1">John</h3>
+                    <p class="text-emerald-300 text-sm mb-2">Electric & Electronics Engineer & Software Architect</p>
+                    <p class="text-gray-300 text-xs">Developing the intelligent control systems for our reactors and stoves.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="contact-modal-overlay" class="modal-overlay hidden">
+        <div id="contact-modal-content" class="modal-content">
+            <button id="close-contact-modal" class="absolute top-4 right-4 text-gray-300 hover:text-white text-3xl focus:outline-none">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="text-3xl md:text-4xl font-bold text-emerald-300 mb-6 text-center">
+                Get in Touch with EcoFlame
+            </h2>
+            <p class="text-lg text-gray-200 mb-8 text-center">
+                Have questions about our products, technology, or just want to say hello? We'd love to hear from you!
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <i class="fas fa-phone-alt text-4xl text-emerald-400 mb-4"></i>
+                    <h3 class="text-2xl font-semibold text-white mb-2">Call Us</h3>
+                    <p class="text-gray-300 mb-2">General Inquiries:</p>
+                    <a href="tel:+1234567890" class="text-emerald-300 hover:underline text-lg">+255 745 678 900</a>
+                    <p class="text-gray-300 mt-4 text-sm">Available Monday - Friday, 9 AM - 5 PM EAT</p>
+                </div>
+
+                <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center hover:scale-105 transition-transform duration-300">
+                    <i class="fas fa-envelope text-4xl text-emerald-400 mb-4"></i>
+                    <h3 class="text-2xl font-semibold text-white mb-2">Email Us</h3>
+                    <p class="text-gray-300 mb-2">General Inquiries:</p>
+                    <a href="mailto:info@ecoflame.com" class="text-emerald-300 hover:underline text-lg">info@ecoflame.com</a>
+                    <p class="text-gray-300 mt-2 mb-2">Support:</p>
+                    <a href="mailto:support@ecoflame.com" class="text-emerald-300 hover:underline text-lg">support@ecoflame.com</a>
+                </div>
+            </div>
+
+            <div class="bg-gray-800 bg-opacity-40 rounded-xl p-6 shadow-xl border border-gray-700 text-center mb-8 hover:scale-105 transition-transform duration-300">
+                <i class="fas fa-share-alt text-4xl text-emerald-400 mb-4"></i>
+                <h3 class="text-2xl font-semibold text-white mb-4">Connect With Us</h3>
+                <div class="flex justify-center space-x-6 text-3xl">
+                    <a href="https://facebook.com/Lusano Luvanda" target="_blank" class="text-gray-300 hover:text-blue-600 transition-colors duration-300" aria-label="Facebook"><i class="fab fa-facebook"></i></a>
+                    <a href="https://twitter.com/ecoflame" target="_blank" class="text-gray-300 hover:text-blue-400 transition-colors duration-300" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+                    <a href="https://linkedin.com/company/ecoflame" target="_blank" class="text-gray-300 hover:text-blue-700 transition-colors duration-300" aria-label="LinkedIn"><i class="fab fa-linkedin"></i></a>
+                    <a href="https://instagram.com/eco_flamelabs" target="_blank" class="text-gray-300 hover:text-pink-500 transition-colors duration-300" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+                </div>
+            </div>
+
+            <div class="text-center text-gray-400 text-md mt-8">
+                <p>For direct messages, you might consider adding a contact form here in the future!</p>
+                <p>You can also find us at our main office in Mbeya, Mbeya Region, Tanzania.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabPanels = document.querySelectorAll('.tab-content');
+            const chatbotButton = document.getElementById('chatbot-button');
+            const chatbotWindow = document.getElementById('chatbot-window');
+            const closeChatbotButton = document.getElementById('close-chatbot');
+
+            // Team Modal elements
+            const openTeamModalButton = document.getElementById('open-team-modal');
+            const teamModalOverlay = document.getElementById('team-modal-overlay');
+            const closeTeamModalButton = document.getElementById('close-team-modal');
+
+            // Contact Modal elements
+            const openContactModalButton = document.getElementById('open-contact-modal');
+            const contactModalOverlay = document.getElementById('contact-modal-overlay');
+            const closeContactModalButton = document.getElementById('close-contact-modal');
+
+            // Animated elements for the home tab
+            const homeTabPanel = document.getElementById('home-tab-panel');
+            const mainHeading = document.getElementById('main-heading');
+            const mainParagraph = document.getElementById('main-paragraph');
+            const discoverButtonContainer = document.getElementById('discover-button-container');
+            const welcomeAnimationContainer = document.getElementById('welcome-animation-container');
+            const robotImage = document.getElementById('robot-image');
+
+            // Chatbot specific elements
+            const chatMessages = document.getElementById('chat-messages');
+            const chatInput = document.getElementById('chat-input');
+            const sendChatButton = document.getElementById('send-chat-button');
+
+            // Pre-defined product responses
+            const productResponses = [
+                {
+                    keywords: ['hello', 'hi', 'hey', 'whatsup', 'tsup', 'good morning', 'good afternoon', 'good evening', 'greetings', 'howdy', 'yo', 'sup', 'hola', 'bonjour', 'konnichiwa', 'how are you', 'hi there', 'gday', 'aloha', 'shalom', 'namaste'],
+                    response: 'Hello! How can I assist you with EcoFlame products today?'
+                },
+                {
+                    keywords: ['reactor', 'reactors', 'hydrogen reactor', 'portable reactor', 'eco reactor', 'alpha reactor', 'pro reactor', 'power generator', 'energy device'],
+                    response: 'Our EcoFlame Hydrogen Reactors are designed for on-demand, clean energy. They are compact, efficient, and great for off-grid power. You can find more details on our Hydrogen Reactors page.'
+                },
+                {
+                    keywords: ['stove', 'stoves', 'hydrogen stove', 'cooking', 'cook', 'flame', 'burner', 'kitchen appliance'],
+                    response: 'EcoFlame Hydrogen Stoves revolutionize cooking with a clean, consistent flame. They are perfect for both indoor and outdoor use. Check out our Hydrogen Stoves page for more information.'
+                },
+                {
+                    keywords: ['pack', 'packs', 'reactor pack', 'bundle', 'kit', 'starter kit', 'fuel pack'],
+                    response: 'Our EcoFlame Reactor Packs offer complete energy solutions, bundling reactors with fuel and accessories. We have 1H, 2H, and 3H packs, each compatible with all EcoFlame stoves. Visit our Reactor Packs page for details.'
+                },
+                {
+                    keywords: ['1h pack', '1h reactor pack', 'one h pack', '1 hour pack', 'one hour capacity'],
+                    response: 'The 1H Reactor Pack includes one EcoReactor Alpha (approx. 1 hour capacity), 3 liters of reagent, 1.5 kg of reactor rods, and provides 1 hour of cook gas time. It\'s a great starter option!'
+                },
+                {
+                    keywords: ['2h pack', '2h reactor pack', 'two h pack', '2 hour pack', 'two hour capacity'],
+                    response: 'The 2H Reactor Pack offers extended power with one EcoReactor Alpha (approx. 2 hour capacity), 3 liters of reagent, 3 kg of reactor rods, and 2 hours of cook gas time. Ideal for longer use!'
+                },
+                {
+                    keywords: ['3h pack', '3h reactor pack', 'three h pack', '3 hour pack', 'three hour capacity'],
+                    response: 'The 3H Reactor Pack is our most comprehensive solution, featuring one EcoReactor Pro (approx. 3 hour capacity), 3 liters of reagent, 5.5 kg of reactor rods, and 3 hours of cook gas time. Maximum energy independence!'
+                },
+                {
+                    keywords: ['price', 'cost', 'how much', 'pricing', 'afford', 'expensive', 'cheap'],
+                    response: 'For pricing information, please visit the specific product pages (Hydrogen Reactors, Hydrogen Stoves, Reactor Packs) or contact our sales team directly through the "Contact" tab.'
+                },
+                {
+                    keywords: ['buy', 'purchase', 'order', 'where to buy', 'get it', 'shop', 'acquire'],
+                    response: 'You can learn more about purchasing our products on their respective pages. For direct orders or inquiries, please use the "Contact" tab to reach our sales team.'
+                },
+                {
+                    keywords: ['thank you', 'thanks', 'appreciate it', 'cheers', 'thx'],
+                    response: 'You\'re welcome! Is there anything else I can help you with?'
+                },
+                {
+                    keywords: ['safety', 'safe', 'secure', 'dangers', 'risk', 'explosion', 'hazardous'],
+                    response: 'EcoFlame products are designed with multiple layers of safety features, including solid-state hydrogen storage and AI-powered monitoring, to ensure secure and reliable operation. Our technology eliminates the risks associated with pressurized gas.'
+                },
+                {
+                    keywords: ['emissions', 'pollution', 'clean', 'environment', 'eco-friendly', 'green', 'carbon'],
+                    response: 'Our catalytic converters ensure ultra-clean combustion, producing only water vapor as a byproduct. EcoFlame products have zero harmful emissions at the point of use, making them highly environmentally friendly.'
+                },
+                {
+                    keywords: ['how it works', 'technology', 'process', 'mechanism', 'functionality'],
+                    response: 'EcoFlame generates hydrogen on-demand through a precisely tuned chemical reaction between aluminum, water, and sodium hydroxide (lye solution). It\'s a simple "open, insert, fill, close, and cook/power" process, no complex chemistry needed!'
+                },
+                {
+                    keywords: ['electricity', 'power', 'charge', 'battery', 'electric'],
+                    response: 'Our hydrogen production does not require external electricity. Electricity is only used for the control systems, monitoring, and smart features of the device, ensuring efficient and safe operation.'
+                },
+                {
+                    keywords: ['rural', 'urban', 'portable', 'mobile', 'location', 'off-grid', 'home use', 'camping', 'travel'],
+                    response: 'EcoFlame\'s portable solutions are ideal for both rural and urban environments. They are perfectly suited for private, group, or family use, providing clean, reliable energy wherever it\'s needed.'
+                },
+                {
+                    keywords: ['warranty', 'guarantee', 'repair', 'support', 'troubleshoot'],
+                    response: 'For warranty and repair information, please refer to the documentation provided with your product or contact our support team via email or phone.'
+                },
+                {
+                    keywords: ['reagent', 'rods', 'fuel', 'consumables', 'refill'],
+                    response: 'Our reactors use a special reagent and reactor rods for hydrogen production. These are included in our Reactor Packs and can be reordered separately. They are designed for safe and easy handling.'
+                },
+                {
+                    keywords: ['company', 'about us', 'who are you', 'what is ecoflame'],
+                    response: 'EcoFlame is pioneering sustainable energy solutions with innovative portable hydrogen reactors and stoves, aiming to provide clean, efficient, and reliable energy for various uses.'
+                },
+                {
+                    keywords: ['contact', 'reach out', 'get in touch', 'phone', 'email', 'social media'],
+                    response: 'You can reach us by phone at +255 745 678 900, email us at info@ecoflame.com or support@ecoflame.com, or connect with us on Facebook, Twitter, LinkedIn, and Instagram. Our main office is in Mbeya, Tanzania.'
+                }
+            ];
+
+            // Function to trigger home tab animations
+            const triggerHomeAnimations = () => {
+                // Reset opacity and remove animation classes
+                mainHeading.classList.remove('animate-slide-from-top');
+                mainParagraph.classList.remove('animate-slide-from-bottom');
+                discoverButtonContainer.classList.remove('animate-fade-in-scale');
+                welcomeAnimationContainer.classList.remove('animate-fade-in-scale');
+                robotImage.classList.remove('animate-wave');
+
+                mainHeading.classList.add('opacity-0');
+                mainParagraph.classList.add('opacity-0');
+                discoverButtonContainer.classList.add('opacity-0');
+                welcomeAnimationContainer.classList.add('opacity-0');
+
+                // Force reflow to restart animations
+                void mainHeading.offsetWidth;
+                void mainParagraph.offsetWidth;
+                void discoverButtonContainer.offsetWidth;
+                void welcomeAnimationContainer.offsetWidth;
+                void robotImage.offsetWidth;
+
+                // Add animation classes with delays
+                mainHeading.classList.add('animate-slide-from-top');
+                mainHeading.style.animationDelay = '0.5s';
+
+                mainParagraph.classList.add('animate-slide-from-bottom');
+                mainParagraph.style.animationDelay = '1s';
+
+                discoverButtonContainer.classList.add('animate-fade-in-scale');
+                discoverButtonContainer.style.animationDelay = '1.5s';
+
+                welcomeAnimationContainer.classList.add('animate-fade-in-scale');
+                welcomeAnimationContainer.style.animationDelay = '2s';
+                welcomeAnimationContainer.style.left = '1rem';
+                welcomeAnimationContainer.style.bottom = '1rem';
+
+
+                robotImage.classList.add('animate-wave');
+                // The wave animation itself has a delay built-in (3s)
+            };
+
+            // --- Tab Functionality ---
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabPanels.forEach(panel => panel.classList.add('hidden'));
+                    button.classList.add('active');
+                    const targetPanelId = button.getAttribute('aria-controls');
+                    const targetPanel = document.getElementById(targetPanelId);
+                    if (targetPanel) {
+                        targetPanel.classList.remove('hidden');
+                        if (targetPanelId === 'home-tab-panel') {
+                            triggerHomeAnimations(); // Trigger animations when Home tab is shown
+                        }
+                    }
+                });
+            });
+
+            // Trigger animations on initial page load if Home tab is active
+            if (document.getElementById('home-tab').classList.contains('active')) {
+                triggerHomeAnimations();
+            }
+
+            // --- Chatbot Functionality ---
+            chatbotButton.addEventListener('click', () => {
+                chatbotWindow.classList.toggle('hidden');
+                chatbotWindow.classList.toggle('open');
+            });
+
+            closeChatbotButton.addEventListener('click', () => {
+                chatbotWindow.classList.add('hidden');
+                chatbotWindow.classList.remove('open');
+            });
+
+            // Function to add a message to the chat display
+            const addMessage = (text, sender) => {
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+                messageDiv.textContent = text;
+                chatMessages.appendChild(messageDiv);
+                // Scroll to the bottom
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            };
+
+            // Function to show/hide loading indicator with typing animation
+            const showLoadingIndicator = (show) => {
+                let loadingDiv = document.getElementById('loading-indicator');
+                if (show) {
+                    if (!loadingDiv) {
+                        loadingDiv = document.createElement('div');
+                        loadingDiv.id = 'loading-indicator';
+                        loadingDiv.classList.add('loading-indicator');
+                        loadingDiv.innerHTML = `EcoFlame Assistant is typing<span class="typing-dot">.</span><span class="typing-dot">.</span><span class="typing-dot">.</span>`;
+                        chatMessages.appendChild(loadingDiv);
+                    }
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } else {
+                    if (loadingDiv) {
+                        loadingDiv.remove();
+                    }
+                }
+            };
+
+            // Function to get response (from JSON or Gemini API)
+            const getBotResponse = async (prompt) => {
+                const lowerCasePrompt = prompt.toLowerCase();
+
+                // 1. Check for pre-defined responses
+                for (const responseObj of productResponses) {
+                    // Check if ANY of the keywords are included in the prompt
+                    const keywordFound = responseObj.keywords.some(keyword => lowerCasePrompt.includes(keyword));
+                    if (keywordFound) {
+                        addMessage(responseObj.response, 'bot');
+                        return; // Found a match, stop here
+                    }
+                }
+
+                // 2. If no pre-defined response, call Gemini API
+                showLoadingIndicator(true);
+                let chatHistory = [];
+                chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+                const payload = { contents: chatHistory };
+                const apiKey = ""; 
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        const text = result.candidates[0].content.parts[0].text;
+                        addMessage(text, 'bot');
+                    } else {
+                        addMessage("Apologies, I couldn't process that request. Please try rephrasing your query or check your internet connection.", 'bot');
+                    }
+                } catch (error) {
+                    console.error('Error calling Gemini API:', error);
+                    addMessage("It seems there was a problem connecting to the assistant. Please ensure you have an internet connection and try again later.", 'bot');
+                } finally {
+                    showLoadingIndicator(false);
+                }
+            };
+
+            // Event listener for sending message
+            sendChatButton.addEventListener('click', () => {
+                const message = chatInput.value.trim();
+                if (message) {
+                    addMessage(message, 'user');
+                    chatInput.value = '';
+                    getBotResponse(message); // Call the new function
+                }
+            });
+
+            // Allow sending message with Enter key
+            chatInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    sendChatButton.click();
+                }
+            });
+
+            // --- Team Modal Functionality ---
+            openTeamModalButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                teamModalOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    teamModalOverlay.classList.add('open');
+                }, 10);
+            });
+
+            closeTeamModalButton.addEventListener('click', () => {
+                teamModalOverlay.classList.remove('open');
+                setTimeout(() => {
+                    teamModalOverlay.classList.add('hidden');
+                }, 300);
+            });
+
+            teamModalOverlay.addEventListener('click', (e) => {
+                if (e.target === teamModalOverlay) {
+                    closeTeamModalButton.click();
+                }
+            });
+
+            // --- Contact Modal Functionality ---
+            openContactModalButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                contactModalOverlay.classList.remove('hidden');
+                setTimeout(() => {
+                    contactModalOverlay.classList.add('open');
+                }, 10);
+            });
+
+            closeContactModalButton.addEventListener('click', () => {
+                contactModalOverlay.classList.remove('open');
+                setTimeout(() => {
+                    contactModalOverlay.classList.add('hidden');
+                }, 300);
+            });
+
+            contactModalOverlay.addEventListener('click', (e) => {
+                if (e.target === contactModalOverlay) {
+                    closeContactModalButton.click();
+                }
+            });
+        });
+    </script>
+
+</body>
+</html>
